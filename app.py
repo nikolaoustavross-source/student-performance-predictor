@@ -2,13 +2,13 @@
 ============================================================
   Student Performance Predictor — Flask App
   ----------------------------------------------------------
-  Web app για πρόβλεψη επίδοσης φοιτητή (Pass/Fail).
-  Χρησιμοποιεί προ-εκπαιδευμένο Logistic Regression model
-  αποθηκευμένο ως student_model.pkl.
+  Web app to predict student performance (Pass/Fail).
+  Uses a pre-trained Logistic Regression model
+  stored as student_model.pkl.
 
   Endpoints:
-    GET  /         → επιστρέφει τη φόρμα (index.html)
-    POST /predict  → δέχεται JSON, επιστρέφει JSON με πρόβλεψη
+    GET  /         → returns the form (index.html)
+    POST /predict  → accepts JSON, returns JSON with prediction
 ============================================================
 """
 
@@ -22,17 +22,17 @@ from pathlib import Path
 
 
 # ─────────────────────────────────────────────────────────────
-#  1. Δημιουργία Flask εφαρμογής
+#  1. Create Flask application
 # ─────────────────────────────────────────────────────────────
 app = Flask(__name__)
 
 
 # ─────────────────────────────────────────────────────────────
-#  2. Φόρτωση του εκπαιδευμένου μοντέλου (μία φορά στο startup)
+#  2. Load the trained model (once at startup)
 #
-#  Το try/except εξασφαλίζει ότι ο server θα ξεκινήσει ακόμα
-#  και αν λείπει το model.pkl — απλώς τα predicts θα επιστρέφουν
-#  503 error. Χρήσιμο για debugging.
+#  The try/except ensures the server will start even if
+#  model.pkl is missing — predictions will simply return
+#  a 503 error. Useful for debugging.
 # ─────────────────────────────────────────────────────────────
 MODEL_PATH = Path(__file__).parent / 'student_model.pkl'
 
@@ -46,7 +46,7 @@ except FileNotFoundError:
 
 
 # ─────────────────────────────────────────────────────────────
-#  3. Home route — επιστρέφει τη φόρμα HTML
+#  3. Home route — returns the HTML form
 # ─────────────────────────────────────────────────────────────
 @app.route('/')
 def home():
@@ -56,21 +56,21 @@ def home():
 # ─────────────────────────────────────────────────────────────
 #  4. Predict route — JSON API
 #
-#  Δέχεται POST request με JSON body, καλεί το model,
-#  και επιστρέφει JSON με την πρόβλεψη.
+#  Accepts a POST request with a JSON body, calls the model,
+#  and returns JSON with the prediction result.
 # ─────────────────────────────────────────────────────────────
 @app.route('/predict', methods=['POST'])
 def predict():
-    # ─── Έλεγχος ότι το model είναι φορτωμένο ───
+    # ─── Check that the model is loaded ───
     if model is None:
         return jsonify({"error": "Model not loaded"}), 503
 
-    # ─── Έλεγχος ότι το request είναι JSON ───
+    # ─── Check that the request body is JSON ───
     data = request.get_json(silent=True)
     if data is None:
         return jsonify({"error": "Request must be JSON"}), 400
 
-    # ─── Validation: όλα τα απαιτούμενα πεδία υπάρχουν ───
+    # ─── Validation: all required fields must be present ───
     required_fields = [
         "study_hours", "attendance", "previous_grade",
         "assignments_submitted", "participation"
@@ -80,50 +80,50 @@ def predict():
             return jsonify({"error": f"Missing field: {field}"}), 400
 
     try:
-        # ─── Δημιουργία DataFrame στη μορφή που περιμένει το model ───
-        # ΠΡΟΣΟΧΗ: τα ονόματα των στηλών πρέπει να ταιριάζουν ακριβώς
-        # με αυτά που είδε το model κατά το training.
-        # Στο notebook, το feature ονομάζεται "submitted_assignments"
-        # — γι' αυτό κάνουμε rename εδώ από "assignments_submitted".
+        # ─── Build DataFrame in the format the model expects ───
+        # NOTE: column names must match exactly what the model
+        # saw during training. In the notebook, the feature is
+        # called "submitted_assignments", so we rename it here
+        # from "assignments_submitted".
         new_student = pd.DataFrame({
             "study_hours":           [float(data['study_hours'])],
             "attendance":            [float(data['attendance'])],
             "previous_grade":        [float(data['previous_grade'])],
             "submitted_assignments": [int(data['assignments_submitted'])],
-            # Καθαρίζουμε whitespace και κεφαλαιοποιούμε το πρώτο γράμμα
-            # ώστε "medium", " Medium ", "MEDIUM" να γίνουν όλα "Medium"
+            # Strip whitespace and capitalise first letter so
+            # "medium", " Medium ", "MEDIUM" all become "Medium"
             "participation":         [data['participation'].strip().capitalize()]
         })
 
-        # ─── Πρόβλεψη ───
+        # ─── Make prediction ───
         prediction = model.predict(new_student)[0]
 
-        # ─── Probability — παίρνουμε τη μέγιστη πιθανότητα ───
-        # Αυτό δουλεύει ανεξάρτητα από το αν οι classes είναι
-        # [0,1] ή ['Fail','Pass'] — πάντα δίνει το confidence
-        # για την πρόβλεψη που έγινε.
+        # ─── Probability — take the highest probability class ───
+        # This works regardless of whether classes are
+        # [0,1] or ['Fail','Pass'] — always gives the confidence
+        # for the predicted class.
         probability = model.predict_proba(new_student)[0].max()
 
-        # ─── Κανονικοποίηση label ───
-        # Το model μπορεί να επιστρέφει 1, "Pass", True ως positive class
+        # ─── Normalise the label ───
+        # The model may return 1, "Pass", or True as the positive class
         label = "Pass" if prediction in [1, "Pass", True] else "Fail"
 
-        # ─── Επιστροφή response ως JSON ───
+        # ─── Return response as JSON ───
         return jsonify({
             "prediction":  label,
-            "probability": round(float(probability) * 100, 2)   # ως ποσοστό
+            "probability": round(float(probability) * 100, 2)   # as percentage
         })
 
     except (ValueError, TypeError) as e:
-        # Λάθος τύπος δεδομένων (π.χ. string σε αριθμητικό πεδίο)
+        # Wrong data type (e.g. string in a numeric field)
         return jsonify({"error": f"Invalid input: {e}"}), 400
     except Exception as e:
-        # Οτιδήποτε άλλο πάει στραβά
+        # Anything else that goes wrong
         return jsonify({"error": str(e)}), 500
 
 
 # ─────────────────────────────────────────────────────────────
-#  5. Εκκίνηση του server
+#  5. Start the server
 # ─────────────────────────────────────────────────────────────
 if __name__ == '__main__':
     print("\n" + "=" * 50)
