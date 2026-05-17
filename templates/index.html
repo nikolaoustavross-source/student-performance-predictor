@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Churn Predictor</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont,
+                         'Segoe UI', Roboto, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            padding: 30px 20px;
+        }
+
+        .card {
+            background: white;
+            padding: 32px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            width: 100%;
+            max-width: 560px;
+        }
+
+        h1 { font-size: 1.4rem; color: #1a202c; margin-bottom: 6px; }
+
+        .subtitle { color: #718096; font-size: 0.9rem; margin-bottom: 28px; }
+
+        .section-title {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #4a5568;
+            margin: 20px 0 12px;
+            padding-bottom: 6px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+
+        .field { margin-bottom: 12px; }
+
+        label {
+            display: block;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 9px 11px;
+            border: 1px solid #cbd5e0;
+            border-radius: 6px;
+            font-size: 0.95rem;
+            font-family: inherit;
+            background: white;
+            transition: border-color 0.15s;
+        }
+
+        input:focus, select:focus {
+            outline: none;
+            border-color: #4299e1;
+            box-shadow: 0 0 0 3px rgba(66,153,225,0.15);
+        }
+
+        button {
+            width: 100%;
+            background: #3182ce;
+            color: white;
+            border: none;
+            padding: 13px;
+            border-radius: 7px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 20px;
+            transition: background 0.15s;
+        }
+
+        button:hover { background: #2b6cb0; }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        #result { margin-top: 20px; padding: 20px; border-radius: 8px; text-align: center; }
+        #result.churn    { background: #fff5f5; color: #c53030; }
+        #result.nochurn  { background: #f0fff4; color: #276749; }
+        #result.error    { background: #fffbeb; color: #92400e; }
+        #result .verdict { font-size: 1.6rem; font-weight: 700; margin-bottom: 4px; }
+        #result .confidence { font-size: 0.95rem; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h1>📡 Customer Churn Predictor</h1>
+    <p class="subtitle">Enter customer details to predict whether they will churn.</p>
+
+    <form id="form">
+        <div class="section-title">Customer Info</div>
+        <div class="grid-2">
+            <div class="field">
+                <label for="gender">Gender</label>
+                <select id="gender" name="gender">
+                    <option value="Male">Male</option>
+                    <option value="Female">Female</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="SeniorCitizen">Senior Citizen</label>
+                <select id="SeniorCitizen" name="SeniorCitizen">
+                    <option value="0">No</option>
+                    <option value="1">Yes</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="Partner">Partner</label>
+                <select id="Partner" name="Partner">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="Dependents">Dependents</label>
+                <select id="Dependents" name="Dependents">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-title">Account Info</div>
+        <div class="grid-2">
+            <div class="field">
+                <label for="tenure">Tenure (months)</label>
+                <input type="number" id="tenure" name="tenure" min="0" value="12">
+            </div>
+            <div class="field">
+                <label for="Contract">Contract</label>
+                <select id="Contract" name="Contract">
+                    <option value="Month-to-month">Month-to-month</option>
+                    <option value="One year">One year</option>
+                    <option value="Two year">Two year</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="PaperlessBilling">Paperless Billing</label>
+                <select id="PaperlessBilling" name="PaperlessBilling">
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="PaymentMethod">Payment Method</label>
+                <select id="PaymentMethod" name="PaymentMethod">
+                    <option value="Electronic check">Electronic check</option>
+                    <option value="Mailed check">Mailed check</option>
+                    <option value="Bank transfer (automatic)">Bank transfer</option>
+                    <option value="Credit card (automatic)">Credit card</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="MonthlyCharges">Monthly Charges ($)</label>
+                <input type="number" id="MonthlyCharges" name="MonthlyCharges"
+                       min="0" step="0.01" value="65.00">
+            </div>
+            <div class="field">
+                <label for="TotalCharges">Total Charges ($)</label>
+                <input type="number" id="TotalCharges" name="TotalCharges"
+                       min="0" step="0.01" value="800.00">
+            </div>
+        </div>
+
+        <div class="section-title">Phone Services</div>
+        <div class="grid-2">
+            <div class="field">
+                <label for="PhoneService">Phone Service</label>
+                <select id="PhoneService" name="PhoneService">
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="MultipleLines">Multiple Lines</label>
+                <select id="MultipleLines" name="MultipleLines">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No phone service">No phone service</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="section-title">Internet Services</div>
+        <div class="grid-2">
+            <div class="field">
+                <label for="InternetService">Internet Service</label>
+                <select id="InternetService" name="InternetService">
+                    <option value="DSL">DSL</option>
+                    <option value="Fiber optic">Fiber optic</option>
+                    <option value="No">No</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="OnlineSecurity">Online Security</label>
+                <select id="OnlineSecurity" name="OnlineSecurity">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No internet service">No internet service</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="OnlineBackup">Online Backup</label>
+                <select id="OnlineBackup" name="OnlineBackup">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No internet service">No internet service</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="DeviceProtection">Device Protection</label>
+                <select id="DeviceProtection" name="DeviceProtection">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No internet service">No internet service</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="TechSupport">Tech Support</label>
+                <select id="TechSupport" name="TechSupport">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No internet service">No internet service</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="StreamingTV">Streaming TV</label>
+                <select id="StreamingTV" name="StreamingTV">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No internet service">No internet service</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="StreamingMovies">Streaming Movies</label>
+                <select id="StreamingMovies" name="StreamingMovies">
+                    <option value="No">No</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No internet service">No internet service</option>
+                </select>
+            </div>
+        </div>
+
+        <button type="submit" id="submit-btn">Predict Churn</button>
+    </form>
+
+    <div id="result" class="hidden"></div>
+</div>
+
+<script>
+    const form      = document.getElementById('form');
+    const resultDiv = document.getElementById('result');
+    const submitBtn = document.getElementById('submit-btn');
+
+    form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        submitBtn.disabled    = true;
+        submitBtn.textContent = 'Predicting...';
+        resultDiv.classList.add('hidden');
+
+        const fields = [
+            'gender','SeniorCitizen','Partner','Dependents','tenure',
+            'PhoneService','MultipleLines','InternetService','OnlineSecurity',
+            'OnlineBackup','DeviceProtection','TechSupport','StreamingTV',
+            'StreamingMovies','Contract','PaperlessBilling','PaymentMethod',
+            'MonthlyCharges','TotalCharges'
+        ];
+
+        const payload = {};
+        fields.forEach(f => {
+            const el = document.getElementById(f);
+            payload[f] = el.type === 'number' ? parseFloat(el.value) : el.value;
+        });
+
+        try {
+            const response = await fetch('/predict', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify(payload)
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Prediction failed');
+            showResult(data);
+        } catch (err) {
+            showError(err.message);
+        } finally {
+            submitBtn.disabled    = false;
+            submitBtn.textContent = 'Predict Churn';
+        }
+    });
+
+    function showResult(data) {
+        const isChurn = data.prediction === 'Churn';
+        resultDiv.className = isChurn ? 'churn' : 'nochurn';
+        resultDiv.innerHTML = `
+            <div class="verdict">${isChurn ? '⚠️ Likely to Churn' : '✅ Likely to Stay'}</div>
+            <div class="confidence">Churn probability: ${data.probability}%</div>
+        `;
+        resultDiv.classList.remove('hidden');
+    }
+
+    function showError(message) {
+        resultDiv.className = 'error';
+        resultDiv.innerHTML = `
+            <div class="verdict">⚠ Error</div>
+            <div class="confidence">${message}</div>
+        `;
+        resultDiv.classList.remove('hidden');
+    }
+</script>
+</body>
+</html>
