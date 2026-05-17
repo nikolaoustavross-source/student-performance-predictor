@@ -10,11 +10,12 @@
 # https://www.kaggle.com/datasets/blastchar/telco-customer-churn
 # ──────────────────────────────────────────────────────────
 
-# ── 1. INSTALL / IMPORT ───────────────────────────────────
+# ── 1. IMPORTS ────────────────────────────────────────────
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import joblib
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.ensemble import RandomForestClassifier
@@ -56,12 +57,15 @@ df.drop('customerID', axis=1, inplace=True)
 df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
 
 # Encode categorical features
+# We save the label encoders so the Flask app can use the same encoding
 cat_cols = df.select_dtypes(include='object').columns.tolist()
 print(f"\n🔠 Categorical columns to encode: {cat_cols}")
 
+encoders = {}
 le = LabelEncoder()
 for col in cat_cols:
     df[col] = le.fit_transform(df[col])
+    encoders[col] = le
 
 print("\n✅ Preprocessing complete. Sample:")
 print(df.head())
@@ -70,8 +74,9 @@ print(df.head())
 X = df.drop('Churn', axis=1)
 y = df['Churn']
 
-# Feature importance note
-print(f"\n📐 Features: {list(X.columns)}")
+# Save column order — Flask app must send features in this exact order
+FEATURE_COLUMNS = list(X.columns)
+print(f"\n📐 Features: {FEATURE_COLUMNS}")
 
 # ── 6. TRAIN / TEST SPLIT ─────────────────────────────────
 X_train, X_test, y_train, y_test = train_test_split(
@@ -147,3 +152,16 @@ print("\n🔮 Example Prediction:")
 print(f"   Input features (first test row): {sample.values}")
 print(f"   Predicted class : {'Churn ⚠️' if pred_class == 1 else 'No Churn ✅'}")
 print(f"   Churn probability: {pred_prob:.2%}")
+
+# ── 11. SAVE MODEL & SCALER FOR FLASK APP ─────────────────
+# Save the Random Forest model, scaler, and feature column list
+# so the Flask web app (app.py) can load and use them directly
+joblib.dump({
+    'model':    rf,
+    'scaler':   scaler,
+    'features': FEATURE_COLUMNS,
+    'encoders': encoders
+}, 'churn_model.pkl')
+
+print("\n✅ Model saved as churn_model.pkl")
+print("   Run 'python app.py' to start the web app.")
