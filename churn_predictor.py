@@ -30,8 +30,6 @@ warnings.filterwarnings('ignore')
 print("✅ All libraries imported successfully")
 
 # ── 2. LOAD DATASET ───────────────────────────────────────
-# Download from Kaggle: WA_Fn-UseC_-Telco-Customer-Churn.csv
-# Place in the same folder as this script
 df = pd.read_csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
 print(f"\n📊 Dataset shape: {df.shape}")
 print(df.head())
@@ -57,7 +55,6 @@ df.drop('customerID', axis=1, inplace=True)
 df['Churn'] = df['Churn'].map({'Yes': 1, 'No': 0})
 
 # Encode categorical features
-# We save the label encoders so the Flask app can use the same encoding
 cat_cols = df.select_dtypes(include='object').columns.tolist()
 print(f"\n🔠 Categorical columns to encode: {cat_cols}")
 
@@ -73,6 +70,10 @@ print(df.head())
 # ── 5. FEATURE / TARGET SPLIT ─────────────────────────────
 X = df.drop('Churn', axis=1)
 y = df['Churn']
+
+# Drop any remaining NaN rows
+X = X.fillna(X.median())
+y = y[X.index]
 
 # Save column order — Flask app must send features in this exact order
 FEATURE_COLUMNS = list(X.columns)
@@ -143,7 +144,6 @@ plt.show()
 print("\n✅ Chart saved as churn_results.png")
 
 # ── 10. EXAMPLE PREDICTION ────────────────────────────────
-# Simulate a new customer
 sample = X_test.iloc[[0]].copy()
 pred_class = rf.predict(sample)[0]
 pred_prob  = rf.predict_proba(sample)[0][1]
@@ -154,8 +154,6 @@ print(f"   Predicted class : {'Churn ⚠️' if pred_class == 1 else 'No Churn �
 print(f"   Churn probability: {pred_prob:.2%}")
 
 # ── 11. SAVE MODEL & SCALER FOR FLASK APP ─────────────────
-# Save the Random Forest model, scaler, and feature column list
-# so the Flask web app (app.py) can load and use them directly
 joblib.dump({
     'model':    rf,
     'scaler':   scaler,

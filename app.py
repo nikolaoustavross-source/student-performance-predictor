@@ -134,4 +134,4 @@ if __name__ == '__main__':
     print("  Customer Churn Predictor")
     print("  → http://localhost:5000")
     print("=" * 50 + "\n")
-    app.run(debug=True, port=5000)
+    app.run(debug=True, port=5001)
